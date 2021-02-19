@@ -41,59 +41,20 @@ export BISHOP,
     PieceColor
 
 Type representing the color of a chess piece.
-
-The possible values are `WHITE`, `BLACK` and `COLOR_NONE`. The reason for the
-existence of the value `COLOR_NONE` is that we represent a chess board as an
-array of pieces, and we need a special `Piece` value `EMPTY` to indicate an
-empty square on the board. The color of the `EMPTY` piece is `COLOR_NONE`.
 """
-struct PieceColor
-    val::Int
-end
-
-const WHITE = PieceColor(1)
-const BLACK = PieceColor(2)
-const COLOR_NONE = PieceColor(3)
-
-function Base.show(io::IO, c::PieceColor)
-    if c == WHITE
-        print(io, "WHITE")
-    elseif c == BLACK
-        print(io, "BLACK")
-    elseif c == COLOR_NONE
-        print(io, "COLOR_NONE")
-    else
-        print(io, "PieceColor(???)")
-    end
-end
-
-
+abstract type PieceColor end
 """
-    isok(c::PieceColor)
+    White
 
-Tests whether a `PieceColor` value is a valid.
-
-Returns `true` if and only if `c` is either `WHITE` or `BLACK`.
-
-# Examples
-
-```julia-repl
-julia> isok(WHITE)
-true
-
-julia> isok(BLACK)
-true
-
-julia> isok(COLOR_NONE)
-false
-
-julia> isok(PieceColor(42))
-false
-```
+Type representing white pieces
 """
-function isok(c::PieceColor)::Bool
-    c == WHITE || c == BLACK
-end
+struct White <: PieceColor end
+"""
+    Black
+
+Type representing black pieces
+"""
+struct Black <: PieceColor end
 
 
 """
@@ -104,16 +65,17 @@ Returns the opposite of a color.
 # Examples
 
 ```julia-repl
-julia> coloropp(WHITE) == BLACK
+julia> coloropp(White) == Black
 true
 
-julia> coloropp(BLACK) == WHITE
+julia> coloropp(Black) == White
 true
 ```
 """
-function coloropp(c::PieceColor)::PieceColor
-    PieceColor(c.val ⊻ 3)
-end
+coloropp(::Type{<:Black}) = White
+coloropp(::Type{<:White}) = Black
+coloropp(::P) where {P<:PieceColor} = coloropp(P)
+
 
 
 """
@@ -139,12 +101,14 @@ julia> colorfromchar('x') == nothing
 true
 ```
 """
-function colorfromchar(c::Char)::Union{PieceColor,Nothing}
-    i = findfirst(isequal(lowercase(c)), "wb")
-    if isnothing(i)
-        nothing
+function Base.parse(::Type{PieceColor}, c::Char)
+    k = lowercase(c)
+    if k == 'w'
+        return White
+    elseif k == 'b'
+        return Black
     else
-        PieceColor(i)
+        throw(ArgumentError("invalid piece color $c"))
     end
 end
 
@@ -167,15 +131,8 @@ julia> tochar(COLOR_NONE)
 '?': ASCII/Unicode U+003f (category Po: Punctuation, other)
 ```
 """
-function tochar(c::PieceColor)::Char
-    if c == WHITE
-        'w'
-    elseif c == BLACK
-        'b'
-    else
-        '?'
-    end
-end
+Base.convert(::Type{C}, ::Type{White}) where {C<:AbstractChar} = C('w')
+Base.convert(::Type{C}, ::Type{Black}) where {C<:AbstractChar} = C('b')
 
 
 """
@@ -190,69 +147,24 @@ board as an array of pieces, and we need a special `Piece` value `EMPTY` to
 indicate an empty square on the board. The type of the `EMPTY` piece is
 `PIECE_TYPE_NONE`
 """
-struct PieceType
-    val::Int
-end
+abstract type PieceType end
+struct Pawn <: PieceType end
+struct Knight <: PieceType end
+struct Bishop <: PieceType end
+struct Rook <: PieceType end
+struct Queen <: PieceType end
+struct King <: PieceType end
 
-(<)(t1::PieceType, t2::PieceType) = t1.val < t2.val
+Base.convert(::Type{T}, ::Type{Pawn}) where {T<:Number} = T(1)
+Base.convert(::Type{T}, ::Type{Knight}) where {T<:Number} = T(3)
+Base.convert(::Type{T}, ::Type{Bishop}) where {T<:Number} = T(3)
+Base.convert(::Type{T}, ::Type{Rook}) where {T<:Number} = T(5)
+Base.convert(::Type{T}, ::Type{Queen}) where {T<:Number} = T(9)
+Base.convert(::Type{T}, ::Type{King}) where {T<:Number} = typemax(T)
 
-const PAWN = PieceType(1)
-const KNIGHT = PieceType(2)
-const BISHOP = PieceType(3)
-const ROOK = PieceType(4)
-const QUEEN = PieceType(5)
-const KING = PieceType(6)
-const PIECE_TYPE_NONE = PieceType(7)
-
-
-function Base.show(io::IO, t::PieceType)
-    if t == PAWN
-        print(io, "PAWN")
-    elseif t == KNIGHT
-        print(io, "KNIGHT")
-    elseif t == BISHOP
-        print(io, "BISHOP")
-    elseif t == ROOK
-        print(io, "ROOK")
-    elseif t == QUEEN
-        print(io, "QUEEN")
-    elseif t == KING
-        print(io, "KING")
-    elseif t == PIECE_TYPE_NONE
-        print(io, "PIECE_TYPE_NONE")
-    else
-        print(io, "PieceType($(t.val))")
-    end
-end
-
-
-"""
-    isok(t::PieceType)
-
-Tests whether a `PieceType` value is valid.
-
-Returns `true` for all of `PAWN`, `KNIGHT`, `BISHOP`, `ROOK`, `QUEEN` and
-`KING`, and `false` for all other inputs.
-
-# Examples
-
-```julia-repl
-julia> isok(QUEEN)
-true
-
-julia> isok(KNIGHT)
-true
-
-julia> isok(PIECE_TYPE_NONE)
-false
-
-julia> isok(PieceType(-1))
-false
-```
-"""
-function isok(t::PieceType)::Bool
-    t >= PAWN && t <= KING
-end
+(<)(::Type{T1}, ::Type{T2}) where {T1<:PieceType,T2<:PieceType} = convert(Int, T1) < convert(Int, T2)
+(<)(::Knight, ::Bishop) = true
+(<)(::Bishop, ::Knight) = false
 
 
 """
@@ -278,12 +190,22 @@ julia> piecetypefromchar('a') == nothing
 true
 ```
 """
-function piecetypefromchar(c::Char)::Union{PieceType,Nothing}
-    i = findfirst(isequal(lowercase(c)), "pnbrqk")
-    if isnothing(i)
-        nothing
+function Base.parse(::Type{PieceType}, c::Char)
+    k = lowercase(c)
+    if k == 'p'
+        return Pawn
+    elseif k == 'n'
+        return Knight
+    elseif k == 'b'
+        return Bishop
+    elseif k == 'r'
+        return Rook
+    elseif k == 'q'
+        return Queen
+    elseif k == 'k'
+        return King
     else
-        PieceType(i)
+        throw(ArgumentError("invalid piece type $k"))
     end
 end
 
@@ -311,30 +233,20 @@ julia> tochar(PIECE_TYPE_NONE)
 '?': ASCII/Unicode U+003f (category Po: Punctuation, other)
 ```
 """
-function tochar(t::PieceType, uppercase = false)::Char
-    if isok(t)
-        (uppercase ? "PNBRQK" : "pnbrqk")[t.val]
-    else
-        '?'
-    end
-end
+convert(::AbstractChar, ::Pawn) = 'p'
+convert(::AbstractChar, ::Knight) = 'n'
+convert(::AbstractChar, ::Bishop) = 'b'
+convert(::AbstractChar, ::Rook) = 'r'
+convert(::AbstractChar, ::Queen) = 'q'
+convert(::AbstractChar, ::King) = 'k'
 
 
 """
     Piece
 
 Type representing a chess piece.
-
-The possible values are `PIECE_WP`, `PIECE_WN`, `PIECE_WB`, `PIECE_WR`,
-`PIECE_WQ`, `PIECE_WK`, `PIECE_BP`, `PIECE_BN`, `PIECE_BB`, `PIECE_BR`,
-`PIECE_BQ`, `PIECE_BK` and `EMPTY`. The reason for the existence of the
-value `EMPTY` is that we represent a chess board as an array of pieces, and
-we need a value to indicate an empty square on the board.
 """
-struct Piece
-    val::Int
-end
-
+struct Piece{C<:PieceColor,T<:PieceType} end
 
 """
     Piece(c::PieceColor, t::PieceType)
@@ -343,144 +255,23 @@ Construct a piece with the given color and type.
 
 # Examples
 ```julia-repl
-julia> Piece(BLACK, QUEEN)
-PIECE_BQ
+julia> Piece(Black, Queen)
+Black Queen
 ```
 """
-Piece(c::PieceColor, t::PieceType) = Piece(((c.val - 1) << 3) | t.val)
+Piece(::Type{C}, ::Type{T}) where {C<:PieceColor, T<:PieceType} = Piece{C,T}()
+
+Base.show(io::IO, p::Piece{C,T}) where {C,T} = print(io, "$C $T")
+
+piececolor(::Piece{C}) where {C} = C
+piecetype(::Piece{C,T}) where {C,T} = T
 
 
-const PIECE_WP = Piece(WHITE, PAWN)
-const PIECE_WN = Piece(WHITE, KNIGHT)
-const PIECE_WB = Piece(WHITE, BISHOP)
-const PIECE_WR = Piece(WHITE, ROOK)
-const PIECE_WQ = Piece(WHITE, QUEEN)
-const PIECE_WK = Piece(WHITE, KING)
-const PIECE_BP = Piece(BLACK, PAWN)
-const PIECE_BN = Piece(BLACK, KNIGHT)
-const PIECE_BB = Piece(BLACK, BISHOP)
-const PIECE_BR = Piece(BLACK, ROOK)
-const PIECE_BQ = Piece(BLACK, QUEEN)
-const PIECE_BK = Piece(BLACK, KING)
-const EMPTY = Piece(COLOR_NONE, PIECE_TYPE_NONE)
-
-
-function Base.show(io::IO, p::Piece)
-    if isok(p)
-        print(io, "PIECE_$(uppercase(tochar(pcolor(p))))$(uppercase(tochar(ptype(p))))")
-    elseif p == EMPTY
-        print(io, "EMPTY")
-    else
-        print(io, "PieceType($(p.val))")
-    end
+function Base.parse(::Type{Piece}, c::Char)
+    color = isuppercase(c) ? White : Black
+    type = parse(PieceType, c)
+    Piece(color, type)
 end
-
-
-"""
-    pcolor(p::Piece)
-
-Find the color of a `Piece`.
-
-# Examples
-
-```julia-repl
-julia> pcolor(PIECE_WB)
-WHITE
-
-julia> pcolor(EMPTY)
-COLOR_NONE
-```
-"""
-function pcolor(p::Piece)::PieceColor
-    PieceColor(p.val >> 3 + 1)
-end
-
-
-"""
-    ptype(p::Piece)
-
-Find the type of a `Piece`.
-
-# Examples
-
-```julia-repl
-julia> ptype(PIECE_BQ)
-QUEEN
-
-julia> ptype(EMPTY)
-PIECE_TYPE_NONE
-```
-"""
-function ptype(p::Piece)::PieceType
-    PieceType(p.val & 7)
-end
-
-
-"""
-    isok(p::Piece)
-
-Tests wheter a `Piece` value is valid.
-
-Returns `true` if and only if the color and the type of the piece are valid
-piece color and piece type values, respectively.
-
-# Examples
-
-```julia-repl
-julia> isok(PIECE_WB)
-true
-
-julia> isok(PIECE_BQ)
-true
-
-julia> isok(EMPTY)
-false
-
-julia> isok(Piece(-10))
-false
-```
-"""
-function isok(p::Piece)::Bool
-    isok(ptype(p)) && isok(pcolor(p))
-end
-
-
-"""
-    piecefromchar(ch::Char)
-
-Tries to convert a character to a `Piece`.
-
-The return value is a `Union{Piece, Nothing}`. If the input character is a
-valid English piece letter, the corresponding piece is returned. If the piece
-letter is uppercase, the piece is white. If the piece letter is lowercase,
-the piece is black.
-
-If the input value is not a valid English piece letter, the function returns
-`nothing`.
-
-# Examples
-
-```julia-repl
-julia> piecefromchar('Q')
-PIECE_WQ
-
-julia> piecefromchar('n')
-PIECE_BN
-
-julia> piecefromchar('-') == nothing
-true
-```
-"""
-function piecefromchar(ch::Char)::Union{Piece,Nothing}
-    c = isuppercase(ch) ? WHITE : BLACK
-    t = piecetypefromchar(ch)
-    if isnothing(t)
-        nothing
-    else
-        Piece(c, t)
-    end
-end
-
 
 """
     tochar(p::Piece)
@@ -500,14 +291,13 @@ julia> tochar(EMPTY)
 '?': ASCII/Unicode U+003f (category Po: Punctuation, other)
 ```
 """
-function tochar(p::Piece)::Char
-    if isok(p)
-        tochar(ptype(p), pcolor(p) == WHITE)
-    else
-        '?'
-    end
+function Base.convert(::Type{C}, p::Piece{Black,T}) where {C<:AbstractChar,T}
+    char = convert(C, T)
+    return uppercase(char)
 end
-
+function Base.convert(::Type{C}, p::Piece{White,T}) where {C<:AbstractChar,T}
+    return convert(C, T)
+end
 
 function tounicode(p::Piece)::Char
     chars = ['♙', '♘', '♗', '♖', '♕', '♔', '?', '?', '♟', '♞', '♝', '♜', '♛', '♚']
@@ -525,10 +315,4 @@ end
 
 Determine whether a piece is a sliding piece.
 """
-function isslider(t::PieceType)::Bool
-    t >= BISHOP && t <= QUEEN
-end
-
-function isslider(p::Piece)::Bool
-    isslider(ptype(p))
-end
+const IsSlider = Union{Bishop, Queen}
